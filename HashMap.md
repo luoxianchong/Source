@@ -727,7 +727,7 @@ null 为key 放在了table[0] 链表中
 
 notice：执行构造函数时，存储元素的数组并不会进行初始化，而是在第一次放入元素的时候，才会进行初始化操作。创建HashMap对象时，仅仅计算初始容量和新增阈值。
 
-![img](E:\201320180110\source\4672.png)
+![img](E:\201320180110\source\image\4672.png)
 
 
 
@@ -865,7 +865,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     transient int modCount;
 
-    int threshold;
+    int threshold;//阈值
 
     final float loadFactor;
 
@@ -906,7 +906,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
                 K key = e.getKey();
                 V value = e.getValue();
-                putVal(hash(key), key, value, false, evict);//增加新k-v,evict=false
+                putVal(hash(key), key, value, false, evict);//增加新k-v
             }
         }
     }
@@ -993,23 +993,24 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         return null;
     }
 
+	//重新调整数据结构
     final Node<K,V>[] resize() {
-        Node<K,V>[] oldTab = table;
+        Node<K,V>[] oldTab = table;//先保存之前table
         int oldCap = (oldTab == null) ? 0 : oldTab.length;
         int oldThr = threshold;
         int newCap, newThr = 0;
+        //判断旧表是否初始化
         if (oldCap > 0) {
             if (oldCap >= MAXIMUM_CAPACITY) {
                 threshold = Integer.MAX_VALUE;
                 return oldTab;
-            }
-            else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
-                     oldCap >= DEFAULT_INITIAL_CAPACITY)
+            }// double capacity
+            else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY && oldCap >= DEFAULT_INITIAL_CAPACITY)
                 newThr = oldThr << 1; // double threshold
         }
-        else if (oldThr > 0) // initial capacity was placed in threshold
+        else if (oldThr > 0) // 旧的阈值大于0，则赋值给新的容量
             newCap = oldThr;
-        else {               // zero initial threshold signifies using defaults
+        else {               //否则默认容量，默认阈值
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
@@ -1029,31 +1030,79 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                     oldTab[j] = null;
                     if (e.next == null)
                         newTab[e.hash & (newCap - 1)] = e;
-                    else if (e instanceof TreeNode)
+                    else if (e instanceof TreeNode)//是否为红黑二叉树
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
-                    else { // preserve order
+                    else { //不是，根据变化的最高位的不同，也就是0或者1，表拆分开
                         Node<K,V> loHead = null, loTail = null;
                         Node<K,V> hiHead = null, hiTail = null;
                         Node<K,V> next;
                         do {
                             next = e.next;
-                            if ((e.hash & oldCap) == 0) {
-                                if (loTail == null)
-                                    loHead = e;
-                                else
-                                    loTail.next = e;
-                                loTail = e;
+                            
+                            /*********************************************/
+							/**
+							 * 注: e本身就是一个链表的节点，它有 自身的值和next(链表的值)，但是因为next值对节点扩容没有帮助，
+							 * 所有在下面讨论中，我近似认为 e是一个只有自身值，而没有next值的元素。
+							 */
+							/*********************************************/
+							next = e.next;
+							// 注意：不是(e.hash & (oldCap-1));而是(e.hash & oldCap)
+
+							// (e.hash & oldCap) 得到的是 元素的在数组中的位置是否需要移动,示例如下
+							// 示例1：
+							// e.hash=10 0000 1010
+							// oldCap=16 0001 0000
+							//	 &   =0	 0000 0000       比较高位的第一位 0
+							//结论：元素位置在扩容后数组中的位置没有发生改变
+							
+							// 示例2：
+							// e.hash=17 0001 0001
+							// oldCap=16 0001 0000
+							//	 &   =1	 0001 0000      比较高位的第一位   1
+							//结论：元素位置在扩容后数组中的位置发生了改变，新的下标位置是原下标位置+原数组长度
+							
+							// (e.hash & (oldCap-1)) 得到的是下标位置,示例如下
+							//   e.hash=10 0000 1010
+							// oldCap-1=15 0000 1111
+							//      &  =10 0000 1010
+								
+							//   e.hash=17 0001 0001
+							// oldCap-1=15 0000 1111
+							//      &  =1  0000 0001
+							
+							//新下标位置
+							//   e.hash=17 0001 0001
+							// newCap-1=31 0001 1111    newCap=32
+							//      &  =17 0001 0001    1+oldCap = 1+16
+							
+							//元素在重新计算hash之后，因为n变为2倍，那么n-1的mask范围在高位多1bit(红色)，因此新的index就会发生这样的变化：
+							//参考博文：[Java8的HashMap详解](https://blog.csdn.net/login_sonata/article/details/76598675)  
+							// 0000 0001->0001 0001 
+                            
+                            if ((e.hash & oldCap) == 0) {//0，是则为低位，原来的位置 
+                                // 如果原元素位置没有发生变化
+								if (loTail == null)
+									loHead = e;// 确定首元素
+								// 第一次进入时	  e   -> aa  ; loHead-> aa
+								else
+									loTail.next = e;
+								//第二次进入时		loTail-> aa  ;    e  -> bb ;  loTail.next -> bb;而loHead和loTail是指向同一块内存的，所以loHead.next 地址为 bb  
+								//第三次进入时		loTail-> bb  ;    e  -> cc ;  loTail.next 地址为 cc;loHead.next.next = cc
+								loTail = e;
+								// 第一次进入时   	  e   -> aa  ; loTail-> aa loTail指向了和  loHead相同的内存空间
+								// 第二次进入时               e   -> bb  ; loTail-> bb loTail指向了和  loTail.next（loHead.next）相同的内存空间   loTail=loTail.next
+								// 第三次进入时               e   -> cc  ; loTail-> cc loTail指向了和  loTail.next(loHead.next.next)相同的内存
+
                             }
-                            else {
-                                if (hiTail == null)
-                                    hiHead = e;
-                                else
-                                    hiTail.next = e;
+                            else {//否则为高位，原来位置+oldcap(旧表的长度)
+                                if (hiTail == null)  hiHead = e;
+                                else  hiTail.next = e;
                                 hiTail = e;
                             }
                         } while ((e = next) != null);
+                        
                         if (loTail != null) {
-                            loTail.next = null;
+                            loTail.next = null;// 将链表的尾节点 的next 设置为空
                             newTab[j] = loHead;
                         }
                         if (hiTail != null) {
@@ -1067,10 +1116,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         return newTab;
     }
 
-    /**
-     * Replaces all linked nodes in bin at index for given hash unless
-     * table is too small, in which case resizes instead.
-     */
     final void treeifyBin(Node<K,V>[] tab, int hash) {
         int n, index; Node<K,V> e;
         if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
@@ -1092,27 +1137,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /**
-     * Copies all of the mappings from the specified map to this map.
-     * These mappings will replace any mappings that this map had for
-     * any of the keys currently in the specified map.
-     *
-     * @param m mappings to be stored in this map
-     * @throws NullPointerException if the specified map is null
-     */
     public void putAll(Map<? extends K, ? extends V> m) {
         putMapEntries(m, true);
     }
 
-    /**
-     * Removes the mapping for the specified key from this map if present.
-     *
-     * @param  key key whose mapping is to be removed from the map
-     * @return the previous value associated with <tt>key</tt>, or
-     *         <tt>null</tt> if there was no mapping for <tt>key</tt>.
-     *         (A <tt>null</tt> return can also indicate that the map
-     *         previously associated <tt>null</tt> with <tt>key</tt>.)
-     */
     public V remove(Object key) {
         Node<K,V> e;
         return (e = removeNode(hash(key), key, null, false, true)) == null ?
@@ -1170,10 +1198,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         return null;
     }
 
-    /**
-     * Removes all of the mappings from this map.
-     * The map will be empty after this call returns.
-     */
     public void clear() {
         Node<K,V>[] tab;
         modCount++;
@@ -1184,14 +1208,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /**
-     * Returns <tt>true</tt> if this map maps one or more keys to the
-     * specified value.
-     *
-     * @param value value whose presence in this map is to be tested
-     * @return <tt>true</tt> if this map maps one or more keys to the
-     *         specified value
-     */
     public boolean containsValue(Object value) {
         Node<K,V>[] tab; V v;
         if ((tab = table) != null && size > 0) {
@@ -1206,21 +1222,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         return false;
     }
 
-    /**
-     * Returns a {@link Set} view of the keys contained in this map.
-     * The set is backed by the map, so changes to the map are
-     * reflected in the set, and vice-versa.  If the map is modified
-     * while an iteration over the set is in progress (except through
-     * the iterator's own <tt>remove</tt> operation), the results of
-     * the iteration are undefined.  The set supports element removal,
-     * which removes the corresponding mapping from the map, via the
-     * <tt>Iterator.remove</tt>, <tt>Set.remove</tt>,
-     * <tt>removeAll</tt>, <tt>retainAll</tt>, and <tt>clear</tt>
-     * operations.  It does not support the <tt>add</tt> or <tt>addAll</tt>
-     * operations.
-     *
-     * @return a set view of the keys contained in this map
-     */
     public Set<K> keySet() {
         Set<K> ks = keySet;
         if (ks == null) {
@@ -1257,21 +1258,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /**
-     * Returns a {@link Collection} view of the values contained in this map.
-     * The collection is backed by the map, so changes to the map are
-     * reflected in the collection, and vice-versa.  If the map is
-     * modified while an iteration over the collection is in progress
-     * (except through the iterator's own <tt>remove</tt> operation),
-     * the results of the iteration are undefined.  The collection
-     * supports element removal, which removes the corresponding
-     * mapping from the map, via the <tt>Iterator.remove</tt>,
-     * <tt>Collection.remove</tt>, <tt>removeAll</tt>,
-     * <tt>retainAll</tt> and <tt>clear</tt> operations.  It does not
-     * support the <tt>add</tt> or <tt>addAll</tt> operations.
-     *
-     * @return a view of the values contained in this map
-     */
     public Collection<V> values() {
         Collection<V> vs = values;
         if (vs == null) {
@@ -1305,22 +1291,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /**
-     * Returns a {@link Set} view of the mappings contained in this map.
-     * The set is backed by the map, so changes to the map are
-     * reflected in the set, and vice-versa.  If the map is modified
-     * while an iteration over the set is in progress (except through
-     * the iterator's own <tt>remove</tt> operation, or through the
-     * <tt>setValue</tt> operation on a map entry returned by the
-     * iterator) the results of the iteration are undefined.  The set
-     * supports element removal, which removes the corresponding
-     * mapping from the map, via the <tt>Iterator.remove</tt>,
-     * <tt>Set.remove</tt>, <tt>removeAll</tt>, <tt>retainAll</tt> and
-     * <tt>clear</tt> operations.  It does not support the
-     * <tt>add</tt> or <tt>addAll</tt> operations.
-     *
-     * @return a set view of the mappings contained in this map
-     */
     public Set<Map.Entry<K,V>> entrySet() {
         Set<Map.Entry<K,V>> es;
         return (es = entrySet) == null ? (entrySet = new EntrySet()) : es;
@@ -1661,17 +1631,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             DEFAULT_INITIAL_CAPACITY;
     }
 
-    /**
-     * Save the state of the <tt>HashMap</tt> instance to a stream (i.e.,
-     * serialize it).
-     *
-     * @serialData The <i>capacity</i> of the HashMap (the length of the
-     *             bucket array) is emitted (int), followed by the
-     *             <i>size</i> (an int, the number of key-value
-     *             mappings), followed by the key (Object) and value (Object)
-     *             for each key-value mapping.  The key-value mappings are
-     *             emitted in no particular order.
-     */
     private void writeObject(java.io.ObjectOutputStream s)
         throws IOException {
         int buckets = capacity();
@@ -1682,10 +1641,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         internalWriteEntries(s);
     }
 
-    /**
-     * Reconstitute the {@code HashMap} instance from a stream (i.e.,
-     * deserialize it).
-     */
     private void readObject(java.io.ObjectInputStream s)
         throws IOException, ClassNotFoundException {
         // Read in the threshold (ignored), loadfactor, and any hidden stuff
@@ -2052,15 +2007,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /* ------------------------------------------------------------ */
     // LinkedHashMap support
 
-
-    /*
-     * The following package-protected methods are designed to be
-     * overridden by LinkedHashMap, but not by any other subclass.
-     * Nearly all other internal methods are also package-protected
-     * but are declared final, so can be used by LinkedHashMap, view
-     * classes, and HashSet.
-     */
-
     // Create a regular (non-tree) node
     Node<K,V> newNode(int hash, K key, V value, Node<K,V> next) {
         return new Node<>(hash, key, value, next);
@@ -2115,11 +2061,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /* ------------------------------------------------------------ */
     // Tree bins
 
-    /**
-     * Entry for Tree bins. Extends LinkedHashMap.Entry (which in turn
-     * extends Node) so can be used as extension of either regular or
-     * linked node.
-     */
     static final class TreeNode<K,V> extends LinkedHashMap.Entry<K,V> {
         TreeNode<K,V> parent;  // red-black tree links
         TreeNode<K,V> left;
@@ -2166,11 +2107,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             }
         }
 
-        /**
-         * Finds the node starting at root p with the given hash and key.
-         * The kc argument caches comparableClassFor(key) upon first use
-         * comparing keys.
-         */
         final TreeNode<K,V> find(int h, Object k, Class<?> kc) {
             TreeNode<K,V> p = this;
             do {
@@ -2205,13 +2141,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             return ((parent != null) ? root() : this).find(h, k, null);
         }
 
-        /**
-         * Tie-breaking utility for ordering insertions when equal
-         * hashCodes and non-comparable. We don't require a total
-         * order, just a consistent insertion rule to maintain
-         * equivalence across rebalancings. Tie-breaking further than
-         * necessary simplifies testing a bit.
-         */
+        /**  */
         static int tieBreakOrder(Object a, Object b) {
             int d;
             if (a == null || b == null ||
@@ -2334,18 +2264,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             }
         }
 
-        /**
-         * Removes the given node, that must be present before this call.
-         * This is messier than typical red-black deletion code because we
-         * cannot swap the contents of an interior node with a leaf
-         * successor that is pinned by "next" pointers that are accessible
-         * independently during traversal. So instead we swap the tree
-         * linkages. If the current tree appears to have too few nodes,
-         * the bin is converted back to a plain bin. (The test triggers
-         * somewhere between 2 and 6 nodes, depending on tree structure).
-         */
-        final void removeTreeNode(HashMap<K,V> map, Node<K,V>[] tab,
-                                  boolean movable) {
+        final void removeTreeNode(HashMap<K,V> map, Node<K,V>[] tab,  boolean movable) {
             int n;
             if (tab == null || (n = tab.length) == 0)
                 return;
@@ -2439,16 +2358,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 moveRootToFront(tab, r);
         }
 
-        /**
-         * Splits nodes in a tree bin into lower and upper tree bins,
-         * or untreeifies if now too small. Called only from resize;
-         * see above discussion about split bits and indices.
-         *
-         * @param map the map
-         * @param tab the table for recording bin heads
-         * @param index the index of the table being split
-         * @param bit the bit of hash to split on
-         */
         final void split(HashMap<K,V> map, Node<K,V>[] tab, int index, int bit) {
             TreeNode<K,V> b = this;
             // Relink into lo and hi lists, preserving order
@@ -2496,8 +2405,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             }
         }
 
-        /* ------------------------------------------------------------ */
-        // Red-black tree methods, all adapted from CLR
 
         static <K,V> TreeNode<K,V> rotateLeft(TreeNode<K,V> root,
                                               TreeNode<K,V> p) {
@@ -2709,6 +2616,42 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     }
 
 }
-​```
 ```
 
+![hashMap](E:\201320180110\source\image\hashMap-resize.jpg)
+
+## 红黑树
+
+### BST
+
+二叉查找树（Binary Search Tree，简称BST）是一棵二叉树。
+
+①它的左子节点的值比父节点的值要小，右节点的值要比父节点的值大。
+
+**它的高度决定了它的查找效率。**在理想的情况下，二叉查找树增删查改的时间复杂度为O(logN)（其中N为节点数），最坏的情况下为O(N)。当它的高度为logN+1时，我们就说二叉查找树是平衡的。
+
+![](E:\201320180110\source\image\bst.png)
+
+notic:  数在插入的时候会导致树倾斜，不同的插入顺序会导致树的高度不一样，而树的高度直接的影响了树的查找效率。理想的高度是logN，最坏的情况是所有的节点都在一条斜线上，这样的树的高度为N
+
+
+
+
+
+### RBTree
+
+引言：平衡树在插入和删除时可以通过旋转操作将高度保持在logN。其中两款具有代表性的平衡树分别为AVL树和红黑树。
+
+​	AVL树追求**全局平衡**，导致插入和删除性能差；
+
+​	实际应用是**局部平衡**的红黑树（Red-Black Tree，简称RBTree）
+
+要素：
+
+```
+任何一个节点都有颜色，黑色或者红色；
+根节点是黑色的；
+父子节点之间不能出现两个连续的红节点；
+任何一个节点向下遍历到其子孙的叶子节点，所经过的黑节点个数必须相等；
+空节点被认为是黑色的。
+```
