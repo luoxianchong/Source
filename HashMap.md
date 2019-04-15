@@ -249,7 +249,7 @@ private void putAllForCreate(Map<? extends K, ? extends V> m) {
         putForCreate(e.getKey(), e.getValue());
 }
 
-//
+//扩容
 void resize(int newCapacity) {
     Entry[] oldTable = table;
     int oldCapacity = oldTable.length;
@@ -259,7 +259,7 @@ void resize(int newCapacity) {
     }
 
     Entry[] newTable = new Entry[newCapacity];
-    transfer(newTable, initHashSeedAsNeeded(newCapacity));
+    transfer(newTable, initHashSeedAsNeeded(newCapacity));//重新调整内容结构，并重新计算hash掩码。
     table = newTable;
     threshold = (int)Math.min(newCapacity * loadFactor, MAXIMUM_CAPACITY + 1);//计算新的阈值
 }
@@ -676,7 +676,7 @@ private void writeObject(java.io.ObjectOutputStream s)
 private static final long serialVersionUID = 362498820763181265L;
 
 /**
- * 反序列化时需要重写readObject
+ * 反序列化时需要重写readObject，反序列化时的顺序与序列化时的顺序相同。
  */
 private void readObject(java.io.ObjectInputStream s) throws IOException, ClassNotFoundException
 {
@@ -1014,8 +1014,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
         if (newThr == 0) {
             float ft = (float)newCap * loadFactor;
-            newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
-                      (int)ft : Integer.MAX_VALUE);
+            newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?  (int)ft : Integer.MAX_VALUE);
         }
         threshold = newThr;
         @SuppressWarnings({"rawtypes","unchecked"})
@@ -1081,15 +1080,15 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                                 // 如果原元素位置没有发生变化
 								if (loTail == null)
 									loHead = e;// 确定首元素
-								// 第一次进入时	  e   -> aa  ; loHead-> aa
+								// 第一次进入时 e   -> aa  ; loHead-> aa
 								else
 									loTail.next = e;
-								//第二次进入时		loTail-> aa  ;    e  -> bb ;  loTail.next -> bb;而loHead和loTail是指向同一块内存的，所以loHead.next 地址为 bb  
-								//第三次进入时		loTail-> bb  ;    e  -> cc ;  loTail.next 地址为 cc;loHead.next.next = cc
+								//第二次进入时	loTail-> aa  ;  e  -> bb ;  loTail.next -> bb;而loHead和loTail是指向同一块内存的，所以loHead.next 地址为 bb  
+								//第三次进入时	loTail-> bb  ;  e  -> cc ;  loTail.next 地址为 cc;loHead.next.next = cc
 								loTail = e;
-								// 第一次进入时   	  e   -> aa  ; loTail-> aa loTail指向了和  loHead相同的内存空间
-								// 第二次进入时               e   -> bb  ; loTail-> bb loTail指向了和  loTail.next（loHead.next）相同的内存空间   loTail=loTail.next
-								// 第三次进入时               e   -> cc  ; loTail-> cc loTail指向了和  loTail.next(loHead.next.next)相同的内存
+								// 第一次进入时    e   -> aa  ; loTail-> aa loTail指向了和  loHead相同的内存空间
+								// 第二次进入时    e   -> bb  ; loTail-> bb loTail指向了和  loTail.next（loHead.next）相同的内存空间   loTail=loTail.next
+								// 第三次进入时    e   -> cc  ; loTail-> cc loTail指向了和  loTail.next(loHead.next.next)相同的内存
 
                             }
                             else {//否则为高位，原来位置+oldcap(旧表的长度)
@@ -1684,324 +1683,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /* ------------------------------------------------------------ */
-    // iterators
-
-    abstract class HashIterator {
-        Node<K,V> next;        // next entry to return
-        Node<K,V> current;     // current entry
-        int expectedModCount;  // for fast-fail
-        int index;             // current slot
-
-        HashIterator() {
-            expectedModCount = modCount;
-            Node<K,V>[] t = table;
-            current = next = null;
-            index = 0;
-            if (t != null && size > 0) { // advance to first entry
-                do {} while (index < t.length && (next = t[index++]) == null);
-            }
-        }
-
-        public final boolean hasNext() {
-            return next != null;
-        }
-
-        final Node<K,V> nextNode() {
-            Node<K,V>[] t;
-            Node<K,V> e = next;
-            if (modCount != expectedModCount)
-                throw new ConcurrentModificationException();
-            if (e == null)
-                throw new NoSuchElementException();
-            if ((next = (current = e).next) == null && (t = table) != null) {
-                do {} while (index < t.length && (next = t[index++]) == null);
-            }
-            return e;
-        }
-
-        public final void remove() {
-            Node<K,V> p = current;
-            if (p == null)
-                throw new IllegalStateException();
-            if (modCount != expectedModCount)
-                throw new ConcurrentModificationException();
-            current = null;
-            K key = p.key;
-            removeNode(hash(key), key, null, false, false);
-            expectedModCount = modCount;
-        }
-    }
-
-    final class KeyIterator extends HashIterator
-        implements Iterator<K> {
-        public final K next() { return nextNode().key; }
-    }
-
-    final class ValueIterator extends HashIterator
-        implements Iterator<V> {
-        public final V next() { return nextNode().value; }
-    }
-
-    final class EntryIterator extends HashIterator
-        implements Iterator<Map.Entry<K,V>> {
-        public final Map.Entry<K,V> next() { return nextNode(); }
-    }
-
-    /* ------------------------------------------------------------ */
-    // spliterators
-
-    static class HashMapSpliterator<K,V> {
-        final HashMap<K,V> map;
-        Node<K,V> current;          // current node
-        int index;                  // current index, modified on advance/split
-        int fence;                  // one past last index
-        int est;                    // size estimate
-        int expectedModCount;       // for comodification checks
-
-        HashMapSpliterator(HashMap<K,V> m, int origin,
-                           int fence, int est,
-                           int expectedModCount) {
-            this.map = m;
-            this.index = origin;
-            this.fence = fence;
-            this.est = est;
-            this.expectedModCount = expectedModCount;
-        }
-
-        final int getFence() { // initialize fence and size on first use
-            int hi;
-            if ((hi = fence) < 0) {
-                HashMap<K,V> m = map;
-                est = m.size;
-                expectedModCount = m.modCount;
-                Node<K,V>[] tab = m.table;
-                hi = fence = (tab == null) ? 0 : tab.length;
-            }
-            return hi;
-        }
-
-        public final long estimateSize() {
-            getFence(); // force init
-            return (long) est;
-        }
-    }
-
-    static final class KeySpliterator<K,V>
-        extends HashMapSpliterator<K,V>
-        implements Spliterator<K> {
-        KeySpliterator(HashMap<K,V> m, int origin, int fence, int est,
-                       int expectedModCount) {
-            super(m, origin, fence, est, expectedModCount);
-        }
-
-        public KeySpliterator<K,V> trySplit() {
-            int hi = getFence(), lo = index, mid = (lo + hi) >>> 1;
-            return (lo >= mid || current != null) ? null :
-                new KeySpliterator<>(map, lo, index = mid, est >>>= 1,
-                                        expectedModCount);
-        }
-
-        public void forEachRemaining(Consumer<? super K> action) {
-            int i, hi, mc;
-            if (action == null)
-                throw new NullPointerException();
-            HashMap<K,V> m = map;
-            Node<K,V>[] tab = m.table;
-            if ((hi = fence) < 0) {
-                mc = expectedModCount = m.modCount;
-                hi = fence = (tab == null) ? 0 : tab.length;
-            }
-            else
-                mc = expectedModCount;
-            if (tab != null && tab.length >= hi &&
-                (i = index) >= 0 && (i < (index = hi) || current != null)) {
-                Node<K,V> p = current;
-                current = null;
-                do {
-                    if (p == null)
-                        p = tab[i++];
-                    else {
-                        action.accept(p.key);
-                        p = p.next;
-                    }
-                } while (p != null || i < hi);
-                if (m.modCount != mc)
-                    throw new ConcurrentModificationException();
-            }
-        }
-
-        public boolean tryAdvance(Consumer<? super K> action) {
-            int hi;
-            if (action == null)
-                throw new NullPointerException();
-            Node<K,V>[] tab = map.table;
-            if (tab != null && tab.length >= (hi = getFence()) && index >= 0) {
-                while (current != null || index < hi) {
-                    if (current == null)
-                        current = tab[index++];
-                    else {
-                        K k = current.key;
-                        current = current.next;
-                        action.accept(k);
-                        if (map.modCount != expectedModCount)
-                            throw new ConcurrentModificationException();
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public int characteristics() {
-            return (fence < 0 || est == map.size ? Spliterator.SIZED : 0) |
-                Spliterator.DISTINCT;
-        }
-    }
-
-    static final class ValueSpliterator<K,V>
-        extends HashMapSpliterator<K,V>
-        implements Spliterator<V> {
-        ValueSpliterator(HashMap<K,V> m, int origin, int fence, int est,
-                         int expectedModCount) {
-            super(m, origin, fence, est, expectedModCount);
-        }
-
-        public ValueSpliterator<K,V> trySplit() {
-            int hi = getFence(), lo = index, mid = (lo + hi) >>> 1;
-            return (lo >= mid || current != null) ? null :
-                new ValueSpliterator<>(map, lo, index = mid, est >>>= 1,
-                                          expectedModCount);
-        }
-
-        public void forEachRemaining(Consumer<? super V> action) {
-            int i, hi, mc;
-            if (action == null)
-                throw new NullPointerException();
-            HashMap<K,V> m = map;
-            Node<K,V>[] tab = m.table;
-            if ((hi = fence) < 0) {
-                mc = expectedModCount = m.modCount;
-                hi = fence = (tab == null) ? 0 : tab.length;
-            }
-            else
-                mc = expectedModCount;
-            if (tab != null && tab.length >= hi &&
-                (i = index) >= 0 && (i < (index = hi) || current != null)) {
-                Node<K,V> p = current;
-                current = null;
-                do {
-                    if (p == null)
-                        p = tab[i++];
-                    else {
-                        action.accept(p.value);
-                        p = p.next;
-                    }
-                } while (p != null || i < hi);
-                if (m.modCount != mc)
-                    throw new ConcurrentModificationException();
-            }
-        }
-
-        public boolean tryAdvance(Consumer<? super V> action) {
-            int hi;
-            if (action == null)
-                throw new NullPointerException();
-            Node<K,V>[] tab = map.table;
-            if (tab != null && tab.length >= (hi = getFence()) && index >= 0) {
-                while (current != null || index < hi) {
-                    if (current == null)
-                        current = tab[index++];
-                    else {
-                        V v = current.value;
-                        current = current.next;
-                        action.accept(v);
-                        if (map.modCount != expectedModCount)
-                            throw new ConcurrentModificationException();
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public int characteristics() {
-            return (fence < 0 || est == map.size ? Spliterator.SIZED : 0);
-        }
-    }
-
-    static final class EntrySpliterator<K,V>
-        extends HashMapSpliterator<K,V>
-        implements Spliterator<Map.Entry<K,V>> {
-        EntrySpliterator(HashMap<K,V> m, int origin, int fence, int est,
-                         int expectedModCount) {
-            super(m, origin, fence, est, expectedModCount);
-        }
-
-        public EntrySpliterator<K,V> trySplit() {
-            int hi = getFence(), lo = index, mid = (lo + hi) >>> 1;
-            return (lo >= mid || current != null) ? null :
-                new EntrySpliterator<>(map, lo, index = mid, est >>>= 1,
-                                          expectedModCount);
-        }
-
-        public void forEachRemaining(Consumer<? super Map.Entry<K,V>> action) {
-            int i, hi, mc;
-            if (action == null)
-                throw new NullPointerException();
-            HashMap<K,V> m = map;
-            Node<K,V>[] tab = m.table;
-            if ((hi = fence) < 0) {
-                mc = expectedModCount = m.modCount;
-                hi = fence = (tab == null) ? 0 : tab.length;
-            }
-            else
-                mc = expectedModCount;
-            if (tab != null && tab.length >= hi &&
-                (i = index) >= 0 && (i < (index = hi) || current != null)) {
-                Node<K,V> p = current;
-                current = null;
-                do {
-                    if (p == null)
-                        p = tab[i++];
-                    else {
-                        action.accept(p);
-                        p = p.next;
-                    }
-                } while (p != null || i < hi);
-                if (m.modCount != mc)
-                    throw new ConcurrentModificationException();
-            }
-        }
-
-        public boolean tryAdvance(Consumer<? super Map.Entry<K,V>> action) {
-            int hi;
-            if (action == null)
-                throw new NullPointerException();
-            Node<K,V>[] tab = map.table;
-            if (tab != null && tab.length >= (hi = getFence()) && index >= 0) {
-                while (current != null || index < hi) {
-                    if (current == null)
-                        current = tab[index++];
-                    else {
-                        Node<K,V> e = current;
-                        current = current.next;
-                        action.accept(e);
-                        if (map.modCount != expectedModCount)
-                            throw new ConcurrentModificationException();
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public int characteristics() {
-            return (fence < 0 || est == map.size ? Spliterator.SIZED : 0) |
-                Spliterator.DISTINCT;
-        }
-    }
-
+   
     /* ------------------------------------------------------------ */
     // LinkedHashMap support
 
@@ -2215,9 +1897,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
         /**
          * Tree version of putVal.
+         map==this,tab被复制table，h=k的hash，k,v
          */
-        final TreeNode<K,V> putTreeVal(HashMap<K,V> map, Node<K,V>[] tab,
-                                       int h, K k, V v) {
+        final TreeNode<K,V> putTreeVal(HashMap<K,V> map, Node<K,V>[] tab, int h, K k, V v) {
             Class<?> kc = null;
             boolean searched = false;
             TreeNode<K,V> root = (parent != null) ? root() : this;
@@ -4668,90 +4350,6 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         }
     }
 
-    /**
-     * Base of key, value, and entry Iterators. Adds fields to
-     * Traverser to support iterator.remove.
-     */
-    static class BaseIterator<K,V> extends Traverser<K,V> {
-        final ConcurrentHashMap<K,V> map;
-        Node<K,V> lastReturned;
-        BaseIterator(Node<K,V>[] tab, int size, int index, int limit,
-                    ConcurrentHashMap<K,V> map) {
-            super(tab, size, index, limit);
-            this.map = map;
-            advance();
-        }
-
-        public final boolean hasNext() { return next != null; }
-        public final boolean hasMoreElements() { return next != null; }
-
-        public final void remove() {
-            Node<K,V> p;
-            if ((p = lastReturned) == null)
-                throw new IllegalStateException();
-            lastReturned = null;
-            map.replaceNode(p.key, null, null);
-        }
-    }
-
-    static final class KeyIterator<K,V> extends BaseIterator<K,V>
-        implements Iterator<K>, Enumeration<K> {
-        KeyIterator(Node<K,V>[] tab, int index, int size, int limit,
-                    ConcurrentHashMap<K,V> map) {
-            super(tab, index, size, limit, map);
-        }
-
-        public final K next() {
-            Node<K,V> p;
-            if ((p = next) == null)
-                throw new NoSuchElementException();
-            K k = p.key;
-            lastReturned = p;
-            advance();
-            return k;
-        }
-
-        public final K nextElement() { return next(); }
-    }
-
-    static final class ValueIterator<K,V> extends BaseIterator<K,V>
-        implements Iterator<V>, Enumeration<V> {
-        ValueIterator(Node<K,V>[] tab, int index, int size, int limit,
-                      ConcurrentHashMap<K,V> map) {
-            super(tab, index, size, limit, map);
-        }
-
-        public final V next() {
-            Node<K,V> p;
-            if ((p = next) == null)
-                throw new NoSuchElementException();
-            V v = p.val;
-            lastReturned = p;
-            advance();
-            return v;
-        }
-
-        public final V nextElement() { return next(); }
-    }
-
-    static final class EntryIterator<K,V> extends BaseIterator<K,V>
-        implements Iterator<Map.Entry<K,V>> {
-        EntryIterator(Node<K,V>[] tab, int index, int size, int limit,
-                      ConcurrentHashMap<K,V> map) {
-            super(tab, index, size, limit, map);
-        }
-
-        public final Map.Entry<K,V> next() {
-            Node<K,V> p;
-            if ((p = next) == null)
-                throw new NoSuchElementException();
-            K k = p.key;
-            V v = p.val;
-            lastReturned = p;
-            advance();
-            return new MapEntry<K,V>(k, v, map);
-        }
-    }
 
     /**
      * Exported Entry for EntryIterator
@@ -4787,27 +4385,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
             map.put(key, value);
             return v;
         }
-    }
-
-    public void forEachEntry(long parallelismThreshold,
-                             Consumer<? super Map.Entry<K,V>> action) {
-        if (action == null) throw new NullPointerException();
-        new ForEachEntryTask<K,V>(null, batchFor(parallelismThreshold), 0, 0, table,
-                                  action).invoke();
-    }
-    public <U> void forEachEntry(long parallelismThreshold,
-                                 Function<Map.Entry<K,V>, ? extends U> transformer,
-                                 Consumer<? super U> action) {
-        if (transformer == null || action == null)
-            throw new NullPointerException();
-        new ForEachTransformedEntryTask<K,V,U>
-            (null, batchFor(parallelismThreshold), 0, 0, table,
-             transformer, action).invoke();
-    }
-
-   
-
-    
+    } 
 
 ```
 
