@@ -113,6 +113,16 @@ AnnotationConfigApplicationContext impl AnnotationConfigRegistry
 
 ###### 10、finishBeanFactoryInitialization()//初始化非懒加载的所有单例bean
 
+​	1、conversionService 包含该bean，并且是ConversionService的子类。则注入beanFactory中，具体做什么？
+
+​	2、注入配置文件解析器、实例化LoadTimeWeaverAware的子类
+
+​	3、清空临时类加载器。
+
+​	4、
+
+
+
 ###### 11、finishRefresh() //完成刷新,
 
 ### doCreateBean()
