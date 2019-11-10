@@ -54,3 +54,17 @@
 
 ![](E:\201320180110\source\image\directRef.png)
 
+
+
+
+
+#### 对象进入老年代策略
+
+1、大对象指的是需要分配大量连续内存空间的java对象
+
+2、如果一个对象超过了-XX:PretenureSizeThreshold (默认值是：0，意思是不管多大都是先在eden中分配内存，该参数只对Serial和ParNew 收集器生效)参数所设置的值，该对象直接在老年代分配。
+
+3、长期存活的对象进入老年代，对象每经过一次Minor GC，则改对象的年龄计算器（age）+1，当该数值大于等于-XX:MaxTenuringThreshold （默认：15）参数时则进入老年代。
+
+4、如果Survivor空间中 相同年龄的对象 的大小总和大于Survivor空间的一半，则大于或等于该年龄的对象可以直接进来老年代，无须等到MaxTenuringThreshold中要求的年龄。
+

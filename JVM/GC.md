@@ -57,8 +57,6 @@
 
 
 
-
-
 Minor GC :从年轻代空间（包括 Eden 和 Survivor 区域）回收内存被称为 Minor GC
 
 Major GC：是清理老年代。
@@ -69,11 +67,11 @@ Full GC： 是清理整个堆空间—包括年轻代和老年代。
 
 从新生代到老年代：
 
-1、大对象（连续空间大于-XX:PretenureSizeThreshold）直接到老年代
+1、大对象（连续空间大于-XX:PretenureSizeThreshold，默认为0，意思是不管多大都是先在eden中分配内存，并且只对Serial和ParNew收集器有效）直接到老年代
 
 2、对象中年龄计数器大于（-XX:MaxTenuringThreshold,默认15），对象在新生代每经过一次Minor GC后任然存活就加1。
 
-3、如果在Surivor空间中相同年龄所有对象大小的总和大于Survivior空间的一半，年龄大于或等于该年龄的对象就可以直接进入老年代，无须等待到MaxTenuringThreshold.
+3、如果在Surivor空间中相同年龄的对象大小的总和大于Survivior空间的一半，则年龄大于或等于该年龄的对象就可以直接进入老年代，无须等待到MaxTenuringThreshold.
 
 
 
