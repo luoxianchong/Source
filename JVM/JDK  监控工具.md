@@ -131,3 +131,8 @@ PS Old Generation
 
 
 -dump  生成快照  例如：jmap -dump:live,format=b,file=heap.out <pid>
+
+
+
+export JAVA_OPTS="-Xms4096m -Xmx4096m -XX:PermSize=256m -XX:MaxPermSize=512m -Dfile.encoding=UTF-8 -XX:+PrintGCDetails -XX:+UseBiasedLocking -XX:+DisableExplicitGC -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSParallelRemarkEnabled -XX:+UseCMSCompactAtFullCollection -XX:LargePageSizeInBytes=128m -XX:+UseFastAccessorMethods -XX:+UseCMSInitiatingOccupancyOnly"
+

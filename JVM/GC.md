@@ -45,13 +45,27 @@
 
 #### 2、垃圾收集器
 
-​	2.1、Serial
+​	2.1、Serial  单线程新生代收集器
 
-​	2.2、ParNew
+​	2.2 、Serial old 单线程老年代收集器
 
-​	2.3、CMS
+​	2.3、ParNew  新生代多线程并行收集器
 
-​	2.4、G1
+​	2.4、Parallel Scavenge  并行收集器，
+
+​				特点：吞吐量优先，吞吐量=用户代码运行时间/(用户代码运行时间+垃圾收集时间)
+
+​	2.5、Parallel old 
+
+​	2.6、CMS
+
+​	2.7、G1
+
+​    2.8、ZGC
+
+![](/home/ing/Documents/Source/image/jvm/gc.jpg)
+
+
 
 #### 三、何时回收
 
