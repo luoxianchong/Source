@@ -4,11 +4,11 @@
 
 
 
-![finalizer-结构图](/home/ing/Documents/Source/image/finalizer-struct.png)
+![finalizer-结构图](./image/finalizer-struct.png)
 
 ##### finzlizer 运行模型
 
-![](/home/ing/Documents/Source/image/finalizer-mod.png)
+![](./image/finalizer-mod.png)
 
 
 

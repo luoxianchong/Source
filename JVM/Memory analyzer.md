@@ -4,7 +4,7 @@
 
 #### top 命令：
 
-![top截图](/home/ing/Documents/image/top-shotcut.png)
+![top截图](../image/top-shotcut.png)
 
 
 
@@ -221,13 +221,17 @@ eg :   pmap  -x 12109|sort -k 3 -nr
 
 gdb -pid 12109
 
+
+
+Strings xxxx.dump
+
 ...
 
 (gdb)  dump memory 12109mem.bin 0x00007f97c45a4000 0x00007f97e8698000
 
-![](/home/ing/Documents/image/strings_memory.png)
+![](../jvm/image/strings_memory.png)
 
-![](/home/ing/Documents/image/jietu.png)
+![](../jvm/jietu.png)
 
 
 
@@ -251,9 +255,9 @@ public class MemeoryDemo{
 }
 ```
 
-![](/home/ing/Documents/Source/image/jvm/res_vm_commited.png)
+![](../image/jvm/res_vm_commited.png)
 
-![](/home/ing/Documents/Source/image/jvm/res_vm_heap5g.png)
+![](../image/jvm/res_vm_heap5g.png)
 
 
 
