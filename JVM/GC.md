@@ -63,7 +63,7 @@
 
 ​    2.8、ZGC
 
-![](/home/ing/Documents/Source/image/jvm/gc.jpg)
+![](../image/jvm/gc.jpg)
 
 
 

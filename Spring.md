@@ -127,5 +127,10 @@ AnnotationConfigApplicationContext impl AnnotationConfigRegistry
 
 ### doCreateBean()
 
-​	1、如果bean的类中没有重写方法（即没有继承或实现），则使用反射创建bean对应，否则使用Cglib
+​	1、如果bean的类中没有重写方法（即没有继承或实现），则使用反射创建bean对应，否则使用Cglib，//Don't override the class with CGLIB if no overrides.
 
+
+
+
+
+​	

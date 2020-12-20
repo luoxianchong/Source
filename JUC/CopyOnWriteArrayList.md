@@ -31,3 +31,6 @@ All elements are permitted, including null.
 
 Memory consistency effects: As with other concurrent collections, actions in a thread prior to placing an object into a CopyOnWriteArrayList happen-before actions subsequent to the access or removal of that element from the CopyOnWriteArrayList in another thread.
 内存一致性效果:和其他并发集合一样，如果线程在删除或访问元素的时候有线程添加元素，那么添加元素的操作会优先执行
+
+
+

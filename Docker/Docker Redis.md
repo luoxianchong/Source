@@ -24,6 +24,7 @@ docker run \
 -v $PWD/conf/redis.conf:/etc/redis/redis.conf:ro \ # 挂载配置文件 ro 为readonly
 --privileged=true \ # 给与一些权限
 --name myredis \ # 给容器起个名字
+--restart=always \ #docker重启，容器自动重启
 -d redis redis-server /etc/redis/redis.conf # deamon 运行 服务使用指定的配置文件
 ```
 
@@ -48,3 +49,13 @@ docker run \
 IP 查看
 
 docker inspect e60da5191243|grep -i add
+
+
+
+
+
+```jsx
+docker run -d -name redis -p 6379:6379 -v /data/redis/data:/data -v /data/redis.conf:/etc/redis/redis.conf:ro --privileged=true --restart=always redis:6.0.8 redis-server /etc/redis/redis.conf
+```
+
+### 
