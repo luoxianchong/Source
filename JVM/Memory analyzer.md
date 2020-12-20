@@ -37,6 +37,27 @@ RES  --  Resident Memory Size (KiB)
 
 
 
+https://elixir.bootlin.com/linux/v4.0/source/fs/proc/array.c
+
+
+
+```
+int task_statm(struct mm_struct *mm, int *shared, int *text,int *data, int *resident){
+*shared = get_mm_counter(mm, file_rss);
+
+*text = (PAGE_ALIGN(mm->end_code) - (mm->start_code & PAGE_MASK)) >> PAGE_SHIFT;
+
+*data = mm->total_vm - mm->shared_vm;
+
+*resident = *shared + get_mm_counter(mm, anon_rss);
+
+ return mm->total_vm;
+
+}
+```
+
+
+
 ```
 [weihu@iz8vbalkelzd05p0y00s7dz erp-online1]$ jmap -heap 24832
 Attaching to process ID 24832, please wait...
@@ -256,6 +277,16 @@ public class MemeoryDemo{
 ![](/home/ing/Documents/Source/image/jvm/res_vm_heap5g.png)
 
 
+
+Shallow Heap 对象自身所占用的内存大小，不包括它所引用的对象的内存大小
+
+Retained Heap  该对象被垃圾回收器回收之后，会释放的内存大小
+
+
+
+with outgoing references:   查看它所引用的对象
+
+with incoming references: 查看它被哪些对象引用
 
 
 
