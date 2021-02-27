@@ -151,3 +151,16 @@ notify 唤醒的是等待集合里的其中一个，选择是随机的。唤醒�
 
 ```
 
+
+为什么线程协作的 wait() 方法需要写在循环里
+```java
+synchronized int get() throws InterruptedException {
+      while (list.size() == 0) {
+          wait();
+      }
+      int v = list.remove(0);
+      notifyAll();
+      return v;
+  }
+  ```
+
